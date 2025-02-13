@@ -1,7 +1,7 @@
 name: ia_upload
 version: iaupload-1.4
 main: upload.ia.Ia_upload
-api-version: 1.13
+api-version: 1.14
 commands:
   iaupload:
     description: 上传文件

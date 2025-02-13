@@ -1,8 +1,8 @@
-name: ia_upload
-version: iaupload-1.4
-main: upload.ia.Ia_upload
+name: LangSinhTon-UpLoad
+version: LangSinhTon-1.4
+main: upload.ia.LangSinhTon
 api-version: 1.14
 commands:
   iaupload:
-    description: 上传文件
+    description: Upload file
     usage: /<command> [run]

@@ -1,16 +1,6 @@
-package cn.tinksp;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import okhttp3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -18,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.json.JSONObject;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Enumeration;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
@@ -26,55 +17,14 @@ import java.util.zip.ZipOutputStream;
 
 public final class Tinkia extends JavaPlugin {
 
-    private File idFile;
-    private FileConfiguration idConfig;
+    private final OkHttpClient httpClient = new OkHttpClient();
+    private String dropboxAccessToken;
 
     @Override
     public void onEnable() {
-        String[] asciiArt = {
-                "|'########:'####:'##::: ##:'##:::'##::'######::'########::|",
-                "|... ##..::. ##:: ###:: ##: ##::'##::'##... ##: ##.... ##:|",
-                "|::: ##::::: ##:: ####: ##: ##:'##::: ##:::..:: ##:::: ##:|"   + "          Tinksp上传资源包插件"  ,
-                "|::: ##::::: ##:: ## ## ##: #####::::. ######:: ########::|"   + "          群号:464570091",
-                "|::: ##::::: ##:: ##. ####: ##. ##::::..... ##: ##.....:::|"   + "          网站:https://www.tinksp.cn/",
-                "|::: ##::::: ##:: ##:. ###: ##:. ##::'##::: ##: ##::::::::|",
-                "|::: ##::::'####: ##::. ##: ##::. ##:. ######:: ##::::::::|",
-                "|:::..:::::....::..::::..::..::::..:::......:::..:::::::::|"
-        };
+        displayAsciiArt();
+        loadAccessToken();
 
-        Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "——————————————————————————————");
-        for (String line : asciiArt) {
-            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + line);
-        }
-        Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "——————————————————————————————");
-
-
-        idFile = new File(getDataFolder(), "id.yml");
-        if (!idFile.exists()) {
-            idFile.getParentFile().mkdirs();
-            saveResource("id.yml", false);
-        }
-
-        idConfig = new YamlConfiguration();
-        try {
-            idConfig.load(idFile);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-
-        if (!idConfig.contains("pluginUser.userId")) {
-
-            String newUserId = UUID.randomUUID().toString();
-            idConfig.set("pluginUser.userId", newUserId);
-            try {
-                idConfig.save(idFile);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-       
         this.getCommand("iaupload").setExecutor((sender, command, label, args) -> {
             if (!sender.isOp()) {
                 sender.sendMessage(ChatColor.RED + "你没有权限执行这个命令");
@@ -83,13 +33,9 @@ public final class Tinkia extends JavaPlugin {
 
             if (args.length > 0 && args[0].equalsIgnoreCase("run")) {
                 try {
-                    
                     File interfaceJson = createInterfaceJson();
-
-                    
                     addFileToZip(interfaceJson, "assets/minecraft/Interface/Interface.json");
 
-                   
                     File zipFile = new File("plugins/ItemsAdder/output/generated.zip");
                     if (zipFile.exists()) {
                         uploadFileAsync(zipFile, sender);
@@ -105,18 +51,48 @@ public final class Tinkia extends JavaPlugin {
         });
     }
 
+    private void loadAccessToken() {
+        File tokenFile = new File(getDataFolder(), "token.yml");
+        if (!tokenFile.exists()) {
+            saveResource("token.yml", false);  // Ensure the token.yml is copied from resources if not present
+        }
 
+        FileConfiguration tokenConfig = YamlConfiguration.loadConfiguration(tokenFile);
+        dropboxAccessToken = tokenConfig.getString("dropbox.accessToken");
 
+        if (dropboxAccessToken == null || dropboxAccessToken.isEmpty()) {
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "Dropbox access token is missing in token.yml!");
+        } else {
+            Bukkit.getConsoleSender().sendMessage(ChatColor.GREEN + "Dropbox access token loaded successfully.");
+        }
+    }
+
+    private void displayAsciiArt() {
+        String[] asciiArt = {
+                "|'########:'####:'##::: ##:'##:::'##::'######::'########::|",
+                "|... ##..::. ##:: ###:: ##: ##::'##::'##... ##: ##.... ##:|",
+                "|::: ##::::: ##:: ####: ##: ##:'##::: ##:::..:: ##:::: ##:|" + "          Tinksp上传资源包插件",
+                "|::: ##::::: ##:: ## ## ##: #####::::. ######:: ########::|" + "          群号:464570091",
+                "|::: ##::::: ##:: ##. ####: ##. ##::::..... ##: ##.....:::|" + "          网站:https://www.tinksp.cn/",
+                "|::: ##::::: ##:: ##:. ###: ##:. ##::'##::: ##: ##::::::::|",
+                "|::: ##::::'####: ##::. ##: ##::. ##:. ######:: ##::::::::|",
+                "|:::..:::::....::..::::..::..::::..:::......:::..:::::::::|"
+        };
+
+        Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "——————————————————————————————");
+        for (String line : asciiArt) {
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + line);
+        }
+        Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "——————————————————————————————");
+    }
 
     private File createInterfaceJson() throws IOException {
-        
         File interfaceJson = new File(getDataFolder(), "Interface.json");
         if (!interfaceJson.exists()) {
             interfaceJson.getParentFile().mkdirs();
             interfaceJson.createNewFile();
         }
 
-        
         String jsonContent = "{\"interface\": \"用于防止恶意上传\"}";
         try (FileWriter writer = new FileWriter(interfaceJson)) {
             writer.write(jsonContent);
@@ -126,105 +102,110 @@ public final class Tinkia extends JavaPlugin {
 
     private void addFileToZip(File sourceFile, String entryName) throws IOException {
         File tempFile = File.createTempFile("temp_generated", ".zip");
-        tempFile.delete();
-
         File originalZip = new File("plugins/ItemsAdder/output/generated.zip");
-        boolean entryExists = false;
 
         try (ZipFile zipFile = new ZipFile(originalZip);
              ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(tempFile))) {
+            boolean entryExists = false;
+
             for (Enumeration<? extends ZipEntry> e = zipFile.entries(); e.hasMoreElements(); ) {
                 ZipEntry entry = e.nextElement();
                 if (entry.getName().equals(entryName)) {
-                    entryExists = true; 
+                    entryExists = true;
                 }
-                
                 zos.putNextEntry(new ZipEntry(entry.getName()));
                 try (InputStream is = zipFile.getInputStream(entry)) {
-                    byte[] buf = new byte[1024];
+                    byte[] buffer = new byte[4096];
                     int len;
-                    while ((len = is.read(buf)) > 0) {
-                        zos.write(buf, 0, len);
+                    while ((len = is.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
                     }
                 }
                 zos.closeEntry();
             }
 
-            
             if (!entryExists) {
-                ZipEntry zipEntry = new ZipEntry(entryName);
-                zos.putNextEntry(zipEntry);
+                zos.putNextEntry(new ZipEntry(entryName));
                 try (FileInputStream fis = new FileInputStream(sourceFile)) {
-                    byte[] buf = new byte[1024];
+                    byte[] buffer = new byte[4096];
                     int len;
-                    while ((len = fis.read(buf)) > 0) {
-                        zos.write(buf, 0, len);
+                    while ((len = fis.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
                     }
                 }
                 zos.closeEntry();
             }
         }
 
-        
-        if (!originalZip.delete()) {
-            throw new IOException(" "); 
-        }
-        if (!tempFile.renameTo(originalZip)) {
-            throw new IOException(" "); 
+        if (!originalZip.delete() || !tempFile.renameTo(originalZip)) {
+            throw new IOException("无法更新压缩文件！");
         }
     }
 
     private void uploadFileAsync(File file, CommandSender sender) {
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             try {
-                
-                String uploadResponse = uploadFile(file);
+                String uploadResponse = uploadFileToDropbox(file);
 
-               
                 if (uploadResponse != null) {
-                    
                     Bukkit.getScheduler().runTask(this, () -> {
                         modifyConfigFile(uploadResponse);
-                        sender.sendMessage("上传文件成功啦！现在先输入/iareload在输入/iatexture all全部重新加载吧");
+                        sender.sendMessage(ChatColor.GREEN + "文件上传成功！请使用 /iareload 加载资源。");
                     });
                 } else {
-                    
-                    sender.sendMessage("文件上传失败!");
+                    sender.sendMessage(ChatColor.RED + "文件上传失败！");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                sender.sendMessage("上传过程中出现错误!");
+                sender.sendMessage(ChatColor.RED + "上传过程中出现错误！");
             }
         });
     }
 
-    private String uploadFile(File file) throws IOException {
-        String userId = idConfig.getString("pluginUser.userId");
-        String randomChars = UUID.randomUUID().toString().substring(0, 5);
-        String newFileName = userId + "_" + randomChars + ".zip";
+    private String uploadFileToDropbox(File file) throws IOException {
+        String dropboxPath = "/generated.zip";
+        byte[] fileBytes = Files.readAllBytes(file.toPath());
 
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-        HttpPost uploadFile = new HttpPost("http://ia.tinksp.cn/upload");
+        Request request = new Request.Builder()
+                .url("https://content.dropboxapi.com/2/files/upload")
+                .addHeader("Authorization", "Bearer " + dropboxAccessToken)
+                .addHeader("Dropbox-API-Arg", "{\"path\":\"" + dropboxPath + "\",\"mode\":\"overwrite\",\"mute\":false}")
+                .addHeader("Content-Type", "application/octet-stream")
+                .post(RequestBody.create(fileBytes))
+                .build();
 
-        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-        builder.addBinaryBody("file", file, ContentType.DEFAULT_BINARY, newFileName);
-        HttpEntity multipart = builder.build();
-
-        uploadFile.setEntity(multipart);
-
-        CloseableHttpResponse response = httpClient.execute(uploadFile);
-        HttpEntity responseEntity = response.getEntity();
-        String responseString = EntityUtils.toString(responseEntity);
-
-        JSONObject jsonResponse = new JSONObject(responseString);
-        if (jsonResponse.getString("status").equals("success")) {
-            return jsonResponse.getString("download_url");
-        } else {
-            return null;
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                return createDropboxSharedLink(dropboxPath);
+            } else {
+                System.err.println("Failed to upload: " + response.body().string());
+            }
         }
+        return null;
     }
 
-    public void modifyConfigFile(String newUrl) {
+    private String createDropboxSharedLink(String filePath) throws IOException {
+        String json = "{\"path\": \"" + filePath + "\", \"short_url\": false}";
+
+        Request request = new Request.Builder()
+                .url("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings")
+                .addHeader("Authorization", "Bearer " + dropboxAccessToken)
+                .addHeader("Content-Type", "application/json")
+                .post(RequestBody.create(json.getBytes()))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                JSONObject jsonResponse = new JSONObject(response.body().string());
+                return jsonResponse.getString("url").replace("?dl=0", "?dl=1");
+            } else {
+                System.err.println("Failed to create shared link: " + response.body().string());
+            }
+        }
+        return null;
+    }
+
+    private void modifyConfigFile(String newUrl) {
         File configFile = new File(getServer().getPluginManager().getPlugin("ItemsAdder").getDataFolder(), "config.yml");
         StringBuilder newContent = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new FileReader(configFile))) {

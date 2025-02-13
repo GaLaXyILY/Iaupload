@@ -9,7 +9,7 @@
     <version>1.5</version>
     <packaging>jar</packaging>
 
-    <name>LangSinhTon-Upload</name>
+    <name>LangSinhTon</name>
 
     <properties>
         <java.version>17</java.version>

@@ -15,7 +15,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-public final class Tinkia extends JavaPlugin {
+public final class LangSinhTon extends JavaPlugin {
 
     private final OkHttpClient httpClient = new OkHttpClient();
     private String dropboxAccessToken;
@@ -27,7 +27,7 @@ public final class Tinkia extends JavaPlugin {
 
         this.getCommand("iaupload").setExecutor((sender, command, label, args) -> {
             if (!sender.isOp()) {
-                sender.sendMessage(ChatColor.RED + "你没有权限执行这个命令");
+                sender.sendMessage(ChatColor.RED + "You do not have permission to execute this command");
                 return true;
             }
 
@@ -40,10 +40,10 @@ public final class Tinkia extends JavaPlugin {
                     if (zipFile.exists()) {
                         uploadFileAsync(zipFile, sender);
                     } else {
-                        sender.sendMessage(ChatColor.RED + "文件不存在！");
+                        sender.sendMessage(ChatColor.RED + "File does not exist！");
                     }
                 } catch (IOException e) {
-                    sender.sendMessage(ChatColor.RED + "处理文件时发生错误！");
+                    sender.sendMessage(ChatColor.RED + "An error occurred while processing the file！");
                     e.printStackTrace();
                 }
             }
@@ -54,6 +54,7 @@ public final class Tinkia extends JavaPlugin {
     private void loadAccessToken() {
         File tokenFile = new File(getDataFolder(), "token.yml");
         if (!tokenFile.exists()) {
+            tokenFile.getParentFile().mkdirs();
             saveResource("token.yml", false);  // Ensure the token.yml is copied from resources if not present
         }
 
@@ -69,16 +70,13 @@ public final class Tinkia extends JavaPlugin {
 
     private void displayAsciiArt() {
         String[] asciiArt = {
-                "|'########:'####:'##::: ##:'##:::'##::'######::'########::|",
-                "|... ##..::. ##:: ###:: ##: ##::'##::'##... ##: ##.... ##:|",
-                "|::: ##::::: ##:: ####: ##: ##:'##::: ##:::..:: ##:::: ##:|" + "          Tinksp上传资源包插件",
-                "|::: ##::::: ##:: ## ## ##: #####::::. ######:: ########::|" + "          群号:464570091",
-                "|::: ##::::: ##:: ##. ####: ##. ##::::..... ##: ##.....:::|" + "          网站:https://www.tinksp.cn/",
-                "|::: ##::::: ##:: ##:. ###: ##:. ##::'##::: ##: ##::::::::|",
-                "|::: ##::::'####: ##::. ##: ##::. ##:. ######:: ##::::::::|",
-                "|:::..:::::....::..::::..::..::::..:::......:::..:::::::::|"
+                "██╗      █████╗ ███╗   ██╗ ██████╗ ███████╗██╗███╗   ██╗████████╗ ██████╗ ███╗   ██╗",
+                "██║     ██╔══██╗████╗  ██║██╔════╝ ██╔════╝██║████╗  ██║╚══██╔══╝██╔═══██╗████╗  ██║",
+                "██║     ███████║██╔██╗ ██║██║  ███╗█████╗  ██║██╔██╗ ██║   ██║   ██║   ██║██╔██╗ ██║",
+                "██║     ██╔══██║██║╚██╗██║██║   ██║██╔══╝  ██║██║╚██╗██║   ██║   ██║   ██║██║╚██╗██║",
+                "███████╗██║  ██║██║ ╚████║╚██████╔╝███████╗██║██║ ╚████║   ██║   ╚██████╔╝██║ ╚████║",
+                "╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝  ╚═══╝"
         };
-
         Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "——————————————————————————————");
         for (String line : asciiArt) {
             Bukkit.getConsoleSender().sendMessage(ChatColor.RED + line);
@@ -93,7 +91,7 @@ public final class Tinkia extends JavaPlugin {
             interfaceJson.createNewFile();
         }
 
-        String jsonContent = "{\"interface\": \"用于防止恶意上传\"}";
+        String jsonContent = "{\"interface\": \"Used to prevent malicious uploads\"}";
         try (FileWriter writer = new FileWriter(interfaceJson)) {
             writer.write(jsonContent);
         }
@@ -138,7 +136,7 @@ public final class Tinkia extends JavaPlugin {
         }
 
         if (!originalZip.delete() || !tempFile.renameTo(originalZip)) {
-            throw new IOException("无法更新压缩文件！");
+            throw new IOException("Failed to update the zip file！");
         }
     }
 
@@ -150,14 +148,14 @@ public final class Tinkia extends JavaPlugin {
                 if (uploadResponse != null) {
                     Bukkit.getScheduler().runTask(this, () -> {
                         modifyConfigFile(uploadResponse);
-                        sender.sendMessage(ChatColor.GREEN + "文件上传成功！请使用 /iareload 加载资源。");
+                        sender.sendMessage(ChatColor.GREEN + "File uploaded successfully! Please use /iareload to load the resources。");
                     });
                 } else {
-                    sender.sendMessage(ChatColor.RED + "文件上传失败！");
+                    sender.sendMessage(ChatColor.RED + "File upload failed！");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                sender.sendMessage(ChatColor.RED + "上传过程中出现错误！");
+                sender.sendMessage(ChatColor.RED + "An error occurred during the upload！");
             }
         });
     }

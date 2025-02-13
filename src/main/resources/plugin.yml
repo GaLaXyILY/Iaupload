@@ -1,5 +1,5 @@
 name: LangSinhTon-UpLoad
-version: LangSinhTon-1.4
+version: '${project.version}'
 main: upload.ia.LangSinhTon
 api-version: 1.14
 commands:

@@ -1,4 +1,4 @@
-name: LangSinhTon-UpLoad
+name: LangSinhTon
 version: '${project.version}'
 main: upload.ia.LangSinhTon
 api-version: 1.20
